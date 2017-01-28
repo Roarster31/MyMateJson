@@ -1,0 +1,90 @@
+<html>
+<head>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var lastStringUpdate = "";
+
+  function spawnNotification(theBody,theIcon,theTitle) {
+    var options = {
+        body: theBody,
+        icon: theIcon
+    }
+    var n = new Notification(theTitle,options);
+    setTimeout(n.close.bind(n), 5000); 
+  }
+
+  var notificationPermission;
+  Notification.requestPermission().then(function(permission) {
+    notificationPermission = permission;
+    console.log(permission);
+  });
+
+  var socket = io.connect('http://localhost:4200');
+
+  socket.on('notifyTextChange', function (text) {
+    if (notificationPermission === "granted") {
+      spawnNotification("Code has updated", 'json.jpg', "MyMateJson")
+    }
+    var startIndex = editor.value.indexOf(text);
+    var endIndex = startIndex + text.length;
+    console.log('startIndex', startIndex);
+    console.log('endIndex', endIndex);
+    editor.focus();
+    editor.setSelectionRange(startIndex, endIndex);
+  });
+
+  socket.on('textchange', function (text) {
+    editor.value = lastStringUpdate = text;
+  });
+
+  function getDifference(a, b)
+  {
+      var i = 0;
+      var j = 0;
+      var result = "";
+
+      while (j < b.length)
+      {
+          if (a[i] != b[j] || i == a.length)
+              result += b[j];
+          else
+              i++;
+          j++;
+      }
+      return result;
+  }
+
+
+</script>
+<style type="text/css">
+
+  html,
+  body {
+    height: 100%;
+  }
+  #editor {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<button type="button" id="notifyButton">Notify Others</button>
+
+<textarea type="text" id="editor"></textarea>
+
+<script type="text/javascript">
+  var editor = document.getElementById("editor");
+  var notifyButton = document.getElementById("notifyButton");
+  editor.addEventListener("keyup", onTextChange);
+  notifyButton.addEventListener("click", onNotifyOthers);
+
+  function onNotifyOthers() {
+    socket.emit('notifyTextChange', getDifference(lastStringUpdate, editor.value));
+  }
+  function onTextChange(){
+   socket.emit('textchange', editor.value)
+  }
+</script>
+</body>
+</html>
